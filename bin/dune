@@ -1,0 +1,4 @@
+(executable
+ (public_name lc_interpreter)
+ (name main)
+ (libraries lc_interpreter))
