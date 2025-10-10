@@ -1,4 +1,4 @@
-type term = Var of int | VarFree of string | Abs of term | App of term * term
+(* type term = Var of int | VarFree of string | Abs of term | App of term * term
 
 (* let rec to_string t =
   match t with
@@ -61,4 +61,17 @@ let () =
   let two = Abs (Abs (App (Var 1, App (Var 1, Var 0)))) in
   let succ = Abs (Abs (Abs (App (Var 1, App (App (Var 2, Var 1), Var 0))))) in
   let three = decode_num (normalize (App (succ, two))) in
-  print_int three
+  print_int three *)
+
+type term = Var of string | Abs of string * term | App of term * term
+
+let rec to_string ~term =
+  match term with
+  | Var x -> x
+  | Abs (x, body) -> "λ" ^ x ^ "." ^ to_string ~term:body
+  | App (t1, t2) -> "(" ^ to_string ~term:t1 ^ " " ^ to_string ~term:t2 ^ ")"
+
+let () =
+  let term = App (Abs ("x", Var "x"), Abs ("y", Var "y")) in
+  let result = to_string ~term in
+  print_endline result

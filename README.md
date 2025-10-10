@@ -108,3 +108,75 @@ AND TRUE FALSE
 ```
 
 [Try to reduce AND, OR, NOT, IF, etc...](https://en.wikipedia.org/wiki/Lambda_calculus#Logic_and_predicates)
+
+## Starting the interpreter
+Well, I think what we know until now is enough to at least start writing an interpreter.
+
+Let's start defining the AST, which one is just a term:
+
+```ocaml
+type term =
+    | Var of string
+    | Abs of string * term
+    | App of term * term
+```
+
+I don't know if you who is reading this are familiar with OCaml, but it is just the type of a term, `... of type` means that a type carries a value, so the type `Var` comes with a string value. If you wanna understand more about it, take a read about variant constructors and algebraic data type. 
+
+`Var of string` in a more practial use:
+```ocaml
+let x = Var "x"
+```
+
+Same of the others:
+```ocaml
+let abs = Abs ("x", Var "x")
+```
+As you probably have already noticed, this `abs` is the same as `λx.x`. It's possible to write a function to do this prettify for us. This function should receive a term, and transform it to string. 
+
+```ocaml
+let rec to_string ~term =
+  match term with
+  | Var x -> x
+  | Abs (x, body) -> "λ" ^ x ^ to_string ~term:body
+  | App (t1, t2) -> to_string ~term:t1 ^ to_string ~term:t2
+```
+Nothing fancy, just a recursive function calling itself for terms. The `^` thing is how to concat strings in OCaml.
+
+I'm using labeled arguments just because it is a tutorial and I wanna make it easier to read the code. Otherwise I would write it like this:
+
+```ocaml
+let rec to_string t =
+  match t with
+  | Var x -> x
+  | Abs (x, body) -> "λ" ^ x ^ to_string body
+  | App (t1, t2) -> to_string t1 ^ to_string t2
+```
+
+> Take a look back at your defined `term`. I mentioned the `of ...` notation carries a value. We're using it's value on the pattern matching: `Abs (x, body) -> "λ" ^ x ^ to_string ~term:body`, where `x` is the string and `body` the term.
+
+Now let's take a look at the output by writing an anonymous functions to call `to_string`
+
+```ocaml
+let () =
+  let term = App (Abs ("x", Var "x"), Abs ("y", Var "y")) in
+  let result = to_string ~term in
+  print_endline result
+```
+
+Output:
+```shell
+> λxxλyy
+```
+
+That's still a bit weird, because it's missing the `.` and `()`:
+
+```ocaml
+let rec to_string ~term =
+  match term with
+  | Var x -> x
+  | Abs (x, body) -> "λ" ^ x ^ "." ^ to_string ~term:body
+  | App (t1, t2) -> "(" ^ to_string ~term:t1 ^ " " ^ to_string ~term:t2 ^ ")"
+```
+
+Output: `(λx.x λy.y)`
