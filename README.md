@@ -1,6 +1,5 @@
-Lambda Calculus Interpreter with beta-reduction and alpha-conversion. I want to refactor it later to use [De Bruijn index](https://en.wikipedia.org/wiki/De_Bruijn_index). 
+Lambda Calculus Interpreter with beta-reduction and alpha-conversion. By now, nothing more.
 
-I've learned it by reading this page:
-- https://en.wikipedia.org/wiki/Lambda_calculus
+I'm currently [working on a pull-request](https://github.com/vitorsouzaalmeida/lc-interpreter/pull/1), which one will turns this README into a tutorial, introducing you to Lambda Calculus, and then writing an interpreter. I've already covered the basics and wrote the tutorial building an interpreter with beta-reduction and alpha-renaming. I want to review it, fix typos, etc, and then keep working on the README, but covering de Bruijn and refactoring the code to use indices instead.
 
-And also by using ChatGPT 5 Study Mode and by doing a bunch of beta-reduction by hand.
+I will probably copy and paste the README and make it [an article on my blog](https://vitorsalmeida.com/). I'm also planning covering more advanced topics involving lambda calculus on my blog by exploring different reduction techniques and extending the typed version by implementing [Lambda cube](https://en.wikipedia.org/wiki/Lambda_cube).
