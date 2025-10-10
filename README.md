@@ -115,10 +115,7 @@ Well, I think what we know until now is enough to at least start writing an inte
 Let's start defining the AST, which one is just a term:
 
 ```ocaml
-type term =
-    | Var of string
-    | Abs of string * term
-    | App of term * term
+type term = Var of string | Abs of string * term | App of term * term
 ```
 
 I don't know if you who is reading this are familiar with OCaml, but it is just the type of a term, `... of type` means that a type carries a value, so the type `Var` comes with a string value. If you wanna understand more about it, take a read about variant constructors and algebraic data type. 
