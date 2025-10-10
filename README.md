@@ -180,3 +180,179 @@ let rec to_string ~term =
 ```
 
 Output: `(λx.x λy.y)`
+
+Seems good enough. 
+
+Now we need to reduce expressions. Let's recap the rule: `(λx. M) N  →  M[x := N]`, so, given the body `M`, replace all free occurrences of `x` with `N`. Let's write it, but in OCaml.
+
+The signature of what we gonna write: `in_term:term -> variable:string -> by_term:term -> term`, so `subst ~in_term:M ~variable:"x" ~by_term:N`:
+
+```ocaml
+let rec subst ~in_term ~variable ~by_term =
+  match in_term with
+  | Var v -> if v = variable then by_term else Var v
+  | App (t1, t2) ->
+      App
+        ( subst ~in_term:t1 ~variable ~by_term,
+          subst ~in_term:t2 ~variable ~by_term )
+  | Abs (x, t) ->
+      if x = variable then Abs (x, t)
+      else Abs (x, subst ~in_term:t ~variable:x ~by_term)
+```
+
+To apply this rule, we also must write a `reduce` function, which gonna call `subst`, so we gonna substitute terms recursively. Also, worth remembering that we're doing [normal-order reduction](https://en.wikipedia.org/wiki/Lambda_calculus#Reduction_strategies). It means we gonna reduce from left to right.
+
+```ocaml
+let rec reduce ~term =
+  match term with
+  | App (Abs (var, body), arg) -> subst ~in_term:body ~variable:var ~by_term:arg
+  | App (lt, rt) ->
+      let lt' = reduce ~term:lt in
+      if lt <> lt' then App (lt', rt) else App (lt, reduce ~term:rt)
+  | Abs (var, body) -> Abs (var, reduce ~term:body)
+  | Var _ -> term
+```
+
+Again, idk how much you who are reding this knows about OCaml, so I want to explain a bit this code.
+- `| App (Abs (var, body), arg)`: we want to check for the tradicional case. It matches for expressions like `(λx.x) y`. For this case, we can just call `subst`.
+
+- `| App (lt, rt)`: now we need to handle things like `((λx.x)(λy.y))z`. Since we're implementing a normal-order reduction, we gonna first reduce the `lf` (left term). `<>` in OCaml compares two structures, so we're checking if `lt` and `lt'` differs, if so, we're returning an application, but with the left-term reduced. Otherwise, the left-term is already reduced, so we reduce the right one.
+
+- `| Abs (var, body)`: nothing special, we're reducing the only available term to reduce.
+
+Good, here's the code until now:
+
+```ocaml
+type term = Var of string | Abs of string * term | App of term * term
+
+let rec to_string ~term =
+  match term with
+  | Var x -> x
+  | Abs (x, body) -> "λ" ^ x ^ "." ^ to_string ~term:body
+  | App (t1, t2) -> "(" ^ to_string ~term:t1 ^ " " ^ to_string ~term:t2 ^ ")"
+
+let rec subst ~in_term ~variable ~by_term =
+  match in_term with
+  | Var v -> if v = variable then by_term else Var v
+  | App (t1, t2) ->
+      App
+        ( subst ~in_term:t1 ~variable ~by_term,
+          subst ~in_term:t2 ~variable ~by_term )
+  | Abs (x, t) ->
+      if x = variable then Abs (x, t)
+      else Abs (x, subst ~in_term:t ~variable:x ~by_term)
+
+let rec reduce ~term =
+  match term with
+  | App (Abs (var, body), arg) -> subst ~in_term:body ~variable:var ~by_term:arg
+  | App (lt, rt) ->
+      let lt' = reduce ~term:lt in
+      if lt <> lt' then App (lt', rt) else App (lt, reduce ~term:rt)
+  | Abs (var, body) -> Abs (var, reduce ~term:body)
+  | Var _ -> term
+
+let () =
+  let term = App (Abs ("x", Var "x"), Var "y") in
+  let result = to_string ~term:(reduce ~term) in
+  print_endline result
+```
+
+It prints to `y`, which is fine. But let's try to reduce this other expression: `(λx.λy.x)y` (`let term = App (Abs ("x", Abs ("y", Var "x")), Var "y")`). It prints `λy.x`, which is wrong, because we didn't implemented alpha-conversion yet. We need to fix our `subst` `Abs (x, t)` match case.
+
+Let's write a function to check if a variable is free in a given term.
+```ocaml
+let rec free_in ~variable ~term =
+  match term with
+  | Var x -> x = variable
+  | App (lt, rt) -> free_in ~variable ~term:lt || free_in ~variable ~term:rt
+  | Abs (x, body) ->
+      if x = variable then false else free_in ~variable:x ~term:body
+```
+
+We can check if a variable is free, but we still need to rename it somehow, so let's now write a function to create a new unique name:
+
+```ocaml
+let fresh_var =
+  let counter = ref 0 in
+  fun base ->
+    incr counter;
+    base ^ string_of_int !counter
+```
+
+This one is just a closure and we're creating unique variables by incrementing a counter, and than concating the variable with the counter. In OCaml, this `!` means dereference. So we're getting the ref. value inside counter.
+
+By refactoring `subst`, we should now check for free variables:
+
+```ocaml
+let rec subst ~in_term ~variable ~by_term =
+  ...
+  | Abs (x, t) ->
+      if x = variable then Abs (x, t)
+      else if free_in ~variable:x ~term:by_term then
+        let x' = fresh_var x in
+        let t' = subst ~in_term:t ~variable:x ~by_term:(Var x') in
+        Abs (x', subst ~in_term:t' ~variable ~by_term)
+      else Abs (x, subst ~in_term:t ~variable ~by_term)
+```
+
+The first `if` checks if the variable we want to substitute is the same as the one bound by the lambda.
+If they are equal, we don’t perform substitution inside, because within this lambda, that variable name refers to its parameter, not the outer variable we’re replacing.
+
+Otherwise, we check if the `x` appears free in `by_term`. If so, we must rename that parameter before substituting. 
+
+Here's the full code:
+
+```OCaml
+type term = Var of string | Abs of string * term | App of term * term
+
+let rec to_string ~term =
+  match term with
+  | Var x -> x
+  | Abs (x, body) -> "λ" ^ x ^ "." ^ to_string ~term:body
+  | App (t1, t2) -> "(" ^ to_string ~term:t1 ^ " " ^ to_string ~term:t2 ^ ")"
+
+let rec free_in ~variable ~term =
+  match term with
+  | Var x -> x = variable
+  | App (lt, rt) -> free_in ~variable ~term:lt || free_in ~variable ~term:rt
+  | Abs (x, body) ->
+      if x = variable then false else free_in ~variable ~term:body
+
+let fresh_var =
+  let counter = ref 0 in
+  fun base ->
+    incr counter;
+    base ^ string_of_int !counter
+
+let rec subst ~in_term ~variable ~by_term =
+  match in_term with
+  | Var v -> if v = variable then by_term else Var v
+  | App (t1, t2) ->
+      App
+        ( subst ~in_term:t1 ~variable ~by_term,
+          subst ~in_term:t2 ~variable ~by_term )
+  | Abs (x, t) ->
+      if x = variable then Abs (x, t)
+      else if free_in ~variable:x ~term:by_term then
+        let x' = fresh_var x in
+        let t' = subst ~in_term:t ~variable:x ~by_term:(Var x') in
+        Abs (x', subst ~in_term:t' ~variable ~by_term)
+      else Abs (x, subst ~in_term:t ~variable ~by_term)
+
+let rec reduce ~term =
+  match term with
+  | App (Abs (var, body), arg) -> subst ~in_term:body ~variable:var ~by_term:arg
+  | App (lt, rt) ->
+      let lt' = reduce ~term:lt in
+      if lt <> lt' then App (lt', rt) else App (lt, reduce ~term:rt)
+  | Abs (var, body) -> Abs (var, reduce ~term:body)
+  | Var _ -> term
+
+let () =
+  let term = App (Abs ("x", Abs ("y", Var "x")), Var "y") in
+  let result = to_string ~term:(reduce ~term) in
+  print_endline result
+
+```
+
+And it evaluates to `λy1.y` now, which is the correct result. The interpreter is already doing beta-reduction and avoiding shadowing by applying alpha-conversion.

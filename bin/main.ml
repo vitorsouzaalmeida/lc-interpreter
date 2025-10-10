@@ -71,7 +71,44 @@ let rec to_string ~term =
   | Abs (x, body) -> "λ" ^ x ^ "." ^ to_string ~term:body
   | App (t1, t2) -> "(" ^ to_string ~term:t1 ^ " " ^ to_string ~term:t2 ^ ")"
 
+let rec free_in ~variable ~term =
+  match term with
+  | Var x -> x = variable
+  | App (lt, rt) -> free_in ~variable ~term:lt || free_in ~variable ~term:rt
+  | Abs (x, body) ->
+      if x = variable then false else free_in ~variable ~term:body
+
+let fresh_var =
+  let counter = ref 0 in
+  fun base ->
+    incr counter;
+    base ^ string_of_int !counter
+
+let rec subst ~in_term ~variable ~by_term =
+  match in_term with
+  | Var v -> if v = variable then by_term else Var v
+  | App (t1, t2) ->
+      App
+        ( subst ~in_term:t1 ~variable ~by_term,
+          subst ~in_term:t2 ~variable ~by_term )
+  | Abs (x, t) ->
+      if x = variable then Abs (x, t)
+      else if free_in ~variable:x ~term:by_term then
+        let x' = fresh_var x in
+        let t' = subst ~in_term:t ~variable:x ~by_term:(Var x') in
+        Abs (x', subst ~in_term:t' ~variable ~by_term)
+      else Abs (x, subst ~in_term:t ~variable ~by_term)
+
+let rec reduce ~term =
+  match term with
+  | App (Abs (var, body), arg) -> subst ~in_term:body ~variable:var ~by_term:arg
+  | App (lt, rt) ->
+      let lt' = reduce ~term:lt in
+      if lt <> lt' then App (lt', rt) else App (lt, reduce ~term:rt)
+  | Abs (var, body) -> Abs (var, reduce ~term:body)
+  | Var _ -> term
+
 let () =
-  let term = App (Abs ("x", Var "x"), Abs ("y", Var "y")) in
-  let result = to_string ~term in
+  let term = App (Abs ("x", Abs ("y", Var "x")), Var "y") in
+  let result = to_string ~term:(reduce ~term) in
   print_endline result
