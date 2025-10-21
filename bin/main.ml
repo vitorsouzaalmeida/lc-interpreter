@@ -63,14 +63,26 @@ let () =
   let three = decode_num (normalize (App (succ, two))) in
   print_int three *)
 
-type term = Var of string | Abs of string * term | App of term * term
+type term = Var of int | Abs of term | App of term * term
 
 let rec to_string ~term =
   match term with
-  | Var x -> x
-  | Abs (x, body) -> "λ" ^ x ^ "." ^ to_string ~term:body
+  | Var i -> string_of_int i
+  | Abs t -> "λ." ^ to_string ~term:t
   | App (t1, t2) -> "(" ^ to_string ~term:t1 ^ " " ^ to_string ~term:t2 ^ ")"
 
+let rec shift ~by ~depth ~term =
+  match term with
+  | Var i -> if i >= depth then Var (i + by) else Var i
+  | Abs t ->
+      let depth' = depth + 1 in
+      Abs (shift ~by ~depth:depth' ~term:t)
+  | App (t1, t2) -> App (shift ~by ~depth ~term:t1, shift ~by ~depth ~term:t2)
+
+let () =
+  let ex = Abs (Abs (App (Var 2, Var 1))) in
+  print_endline (to_string ~term:ex)
+(* 
 let rec free_in ~variable ~term =
   match term with
   | Var x -> x = variable
@@ -111,4 +123,4 @@ let rec reduce ~term =
 let () =
   let term = App (Abs ("x", Abs ("y", Var "x")), Var "y") in
   let result = to_string ~term:(reduce ~term) in
-  print_endline result
+  print_endline result *)

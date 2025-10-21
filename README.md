@@ -353,3 +353,34 @@ let () =
 ```
 
 And it evaluates to `λy1.y` now, which is the correct result. The interpreter is already doing beta-reduction and avoiding shadowing by applying alpha-conversion.
+
+## De Bruijn index
+
+Named variables is kinda messy. Renaming variables, generating fresh ones, checking free vars... Even when two functions are structurally the same, if it is using different variables, our interpreter still treats them as different (e.g. `λx. λy. x`, `λa. λb. a`).
+
+All this process is only used to indicate how far back their binder is.
+
+De Bruijn indices drops all these names, and replace it with a number, indicating how far back their binder is: `λx. λy. x` -> `λ. λ. 1` (for the closest binding). Try some exercicies converting from De Bruijn to named, and from named to De Breuijn.
+
+`λ. λ. λ. 3 (2 1)` becomes `λx. λy. λz. x (y z)`
+
+### Refactoring
+
+The AST has no variables anymore, so we gonna drop all string references:
+
+```OCaml
+type term = Var of int | Abs of term | App of term * term
+```
+
+```OCaml
+let rec to_string ~term =
+  match term with
+  | Var i -> string_of_int i
+  | Abs t -> "λ." ^ to_string ~term:t
+  | App (t1, t2) -> "(" ^ to_string ~term:t1 ^ " " ^ to_string ~term:t2 ^ ")"
+```
+
+When we substitute a term into another, the indices can move depending on how many binders we cross, and that's why a shift function is needed, to fix the numbers when you relocate a term. 
+
+`shift` gonna receive how much to add to indices (positive when moving a term under more binders, negative when popping it out), `depth` input which helps us to write the logic around "Vars with index < depth are locals -> do not shift", "vars with index >= depth are free -> shift", and of course a term.
+
