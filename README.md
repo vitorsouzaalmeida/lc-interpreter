@@ -416,7 +416,7 @@ let rec reduce ~term =
   | _ -> term
 ```
 
-Let's break down the beta-reduction case `App (Abs body, arg)`:
+About the case `App (Abs body, arg)`:
 
 1. First we shift the argument up by 1: `shift ~by:1 ~depth:0 ~term:arg`. It is about to place it inside the lambda body, where all free variables are one level deeper
 
