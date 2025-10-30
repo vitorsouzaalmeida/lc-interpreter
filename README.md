@@ -1,15 +1,10 @@
-[Functions describes the world](https://youtu.be/zHU1xH6Ogs4?si=DARVzaLnBgp5OAyx)!
+What I'm covering:
 
-Goal: build a Lambda Calculus Interpreter:
 1. LC Interpreter (beta-reduction + alpha-conversion)
 2. LC Interpreter (beta-reduction + De Bruijn index)
-3. Simply Typed LC Interpreter (beta-reduction + De Bruijn index)
+3. ~~Simply Typed LC Interpreter (beta-reduction + De Bruijn index)~~ - WIP
 
-[Lambda calculus](https://en.wikipedia.org/wiki/Lambda_calculus) is a simple programming language, and a model of computation (akin to Turing machines and recursive functions)
-
-> By now this project covers only the Untyped lambda calculus. Take a look at the [Typed lambda calculus](https://en.wikipedia.org/wiki/Lambda_calculus#Typed_lambda_calculus) later.
-
-## Abstraction and application
+[Lambda calculus](https://en.wikipedia.org/wiki/Lambda_calculus) is a simple programming language, and a model of computation (akin to Turing machines and recursive functions).
 
 It's composed only of abstractions and applications using variables (e.g. `(λx.x) y`). The whole language is made up of _lambda terms_.
 
